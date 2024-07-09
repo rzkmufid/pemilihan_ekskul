@@ -1,0 +1,120 @@
+<?php
+include "koneksi.php";
+$query = "SELECT s.kd_siswa, s.nm_siswa, e.kd_ekskul, e.nm_ekskul, ds.c1, ds.c2, ds.c3, ds.c4, ds.c5, ds.c6
+          FROM detail_siswa ds
+          JOIN siswa s ON ds.kd_siswa = s.kd_siswa
+          JOIN ekskul e ON ds.kd_ekskul = e.kd_ekskul";
+$result = $conn->query($query);
+
+$data = [];
+while ($row = $result->fetch_assoc()) {
+    $data[$row['nm_siswa']][] = $row;
+}
+?>
+<div class="col-lg-12 grid-margin stretch-card">
+    <div class="card">
+        <div class="card-body">
+            <h4 class="card-title">Data Alternatif</h4>
+            <div class="table-responsive pt-3">
+                <table border="1" class="table table-bordered table-striped">
+                    <thead>
+                        <tr>
+                            <th>No</th>
+                            <th>Nama Siswa</th>
+                            <th>Ekstrakurikuler</th>
+                            <?php
+                            // Ambil data kriteria dari database
+                            $query_criteria = "SELECT * FROM kriteria";
+                            $result_criteria = $conn->query($query_criteria);
+
+                            // Menampilkan kolom kriteria
+                            while ($row_criteria = $result_criteria->fetch_assoc()) {
+                                echo "<th>C" . $row_criteria['urutan'] . "</th>";
+                            }
+                            ?>
+                            <th>Edit</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php
+                        $displayed_students = [];
+                        $no = 1; // Variabel untuk penomoran
+                        foreach ($data as $student_name => $records) :
+                            $rowspan = count($records); // Jumlah baris untuk nama siswa ini
+                            foreach ($records as $index => $row) :
+                        ?>
+                                <tr>
+                                    <?php if (!in_array($row['nm_siswa'], $displayed_students)) : ?>
+                                        <td rowspan="<?php echo $rowspan; ?>"><?php echo $no++; ?></td> <!-- Kolom penomoran -->
+                                        <td rowspan="<?php echo $rowspan; ?>"><?php echo $row['nm_siswa']; ?></td>
+                                        <?php $displayed_students[] = $row['nm_siswa']; ?>
+                                    <?php endif; ?>
+                                    <td><?php echo $row['nm_ekskul']; ?></td>
+                                    <td><?php echo $row['c1']; ?></td>
+                                    <td><?php echo $row['c2']; ?></td>
+                                    <td><?php echo $row['c3']; ?></td>
+                                    <td><?php echo $row['c4']; ?></td>
+                                    <td><?php echo $row['c5']; ?></td>
+                                    <td><?php echo $row['c6']; ?></td>
+                                    <?php if ($index == 0) : ?>
+                                        <td rowspan="<?php echo $rowspan; ?>">
+                                            <button type="button" class="btn btn-primary btn-rounded btn-icon" data-toggle="modal" data-target="#editModal-<?php echo $row['kd_siswa']; ?>">
+                                                <i class="ti-pencil-alt"></i>
+                                            </button>
+                                        </td>
+                                    <?php endif; ?>
+                                </tr>
+                            <?php endforeach; ?>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<?php foreach ($data as $student_name => $records) : ?>
+    <!-- Modal -->
+    <div class="modal fade" id="editModal-<?php echo $records[0]['kd_siswa']; ?>" tabindex="-1" role="dialog" aria-labelledby="editModalLabel" aria-hidden="true">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="editModalLabel">Edit Data Siswa: <?php echo $student_name; ?></h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <form action="update_data.php" method="POST">
+                    <div class="modal-body">
+                        <?php foreach ($records as $row) : ?>
+                            <input type="hidden" name="kd_siswa[]" value="<?php echo $row['kd_siswa']; ?>">
+                            <input type="hidden" name="kd_ekskul[]" value="<?php echo $row['kd_ekskul']; ?>">
+                            <div class="form-group">
+                                <label for="ekskul-<?php echo $row['kd_siswa']; ?>">Ekstrakurikuler:
+                                    <?php echo $row['nm_ekskul']; ?></label>
+                                <div class="input-group">
+                                    <?php
+                                    // Menampilkan input untuk setiap kriteria
+                                    $query_criteria = "SELECT * FROM kriteria";
+                                    $result_criteria = $conn->query($query_criteria);
+
+                                    while ($row_criteria = $result_criteria->fetch_assoc()) {
+                                        $criterion_name = "c" . $row_criteria['id'];
+                                    ?>
+                                        <input type="text" id="<?php echo $criterion_name . '-' . $row['kd_siswa']; ?>" name="<?php echo $criterion_name . '[]'; ?>" class="form-control" value="<?php echo $row[$criterion_name]; ?>" placeholder="<?php echo $row_criteria['nama_kriteria']; ?>">
+                                    <?php } ?>
+                                </div>
+                            </div>
+                        <?php endforeach; ?>
+
+
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                        <button type="submit" class="btn btn-primary">Save changes</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+<?php endforeach; ?>
